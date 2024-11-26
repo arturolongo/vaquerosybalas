@@ -1,22 +1,39 @@
-let leftScore = 0;
-let rightScore = 0;
-
-self.onmessage = function(event) {
-    const { action, player, time } = event.data;
-
-    if (action === 'reset') {
-        leftScore = 0;
-        rightScore = 0;
-    } else if (action === 'update') {
-        if (player === 'left') {
-            leftScore += time;
-        } else if (player === 'right') {
-            rightScore += time;
-        }
-    }
-
-    // Enviar la puntuación actual al hilo principal si es necesario
-    self.postMessage({ leftScore, rightScore });
+let scores = {
+    left: null,
+    right: null
 };
 
-console.log("Worker de sonido iniciado");
+function resetScores() {
+    scores = {
+        left: null,
+        right: null
+    };
+}
+
+self.onmessage = (event) => {
+    try {
+        if (event.data.action === 'reset') {
+            resetScores();
+            return;
+        }
+
+        const { player, time } = event.data;
+        if (!player || time === undefined) return;
+
+        scores[player] = time;
+
+        if (scores.left !== null && scores.right !== null) {
+            const leftDiff = Math.abs(scores.left);
+            const rightDiff = Math.abs(scores.right);
+            
+            self.postMessage({
+                winner: leftDiff < rightDiff ? 'left' : 'right',
+                scores: {...scores}
+            });
+        }
+    } catch (error) {
+        console.error('Error en Score Worker:', error);
+    }
+};
+
+console.log("Score Worker iniciado ✓");
